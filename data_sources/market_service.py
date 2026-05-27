@@ -12,6 +12,8 @@ from data_sources.tushare_provider import fetch_tushare_indices
 from src.models import MarketIndex
 
 
+MARKET_DEBUG_LOGS: list[dict] = []
+
 CN_INDEX_TARGETS = [
     ("000001", "上证指数"),
     ("399001", "深证成指"),
@@ -45,6 +47,7 @@ FALLBACK_INDICES = [
 
 
 def get_market_response(data_dir: Path, ttl_seconds: int = 300) -> dict:
+    MARKET_DEBUG_LOGS.clear()
     cache_path = data_dir / "cache" / "market_cache.json"
 
     def loader() -> tuple[dict, str]:
@@ -69,6 +72,8 @@ def get_market_response(data_dir: Path, ttl_seconds: int = 300) -> dict:
         payload["source"] = "empty" if payload.get("source") == "empty" else payload.get("source", "empty")
         payload["status"] = "fallback"
         payload["message"] = "指数数据暂不可用，已展示 fallback 指数卡片。"
+        _debug_log("fallback", "success", len(payload["data"]["indices"]), "fallback indices rendered")
+    payload["debug"] = list(MARKET_DEBUG_LOGS)
     print(f"[market-debug] response status={payload.get('status')} source={payload.get('source')} count={len(payload['data']['indices'])}")
     return payload
 
@@ -79,7 +84,9 @@ def _load_akshare_market() -> tuple[dict, str] | None:
     has_snapshot = any([snapshot.a_spot_top, snapshot.index_spot, snapshot.concept_boards, snapshot.fund_flow])
     print(f"[market-debug] source=akshare status=loaded count={len(indices)} snapshot={int(has_snapshot)}")
     if any(index.status == "success" for index in indices) or has_snapshot:
+        _debug_log("akshare", "success", len(indices), f"snapshot={int(has_snapshot)}")
         return {"indices": [_index_to_dict(index) for index in indices], "snapshot": snapshot_to_dict(snapshot)}, "akshare"
+    _debug_log("akshare", "empty", len(indices), "no successful index rows")
     return None
 
 
@@ -87,7 +94,9 @@ def _load_tushare_market() -> tuple[dict, str] | None:
     tushare_indices, status = fetch_tushare_indices()
     print(f"[market-debug] source=tushare status={status.get('status')} count={len(tushare_indices)} error={status.get('message', '')}")
     if tushare_indices:
+        _debug_log("tushare", "success", len(tushare_indices), status.get("message", ""))
         return {"indices": [_index_to_dict(index) for index in tushare_indices], "snapshot": None}, "tushare"
+    _debug_log("tushare", status.get("status", "empty"), len(tushare_indices), status.get("message", ""))
     return None
 
 
@@ -99,9 +108,11 @@ def _call_with_timeout(func, timeout_seconds: int) -> tuple[dict, str] | None:
     except TimeoutError:
         future.cancel()
         print(f"[market-debug] source={getattr(func, '__name__', 'provider')} status=timeout count=0 error=timeout")
+        _debug_log(getattr(func, "__name__", "provider"), "error", 0, "timeout")
         return None
     except Exception as exc:
         print(f"[market-debug] source={getattr(func, '__name__', 'provider')} status=error count=0 error={type(exc).__name__}")
+        _debug_log(getattr(func, "__name__", "provider"), "error", 0, type(exc).__name__)
         return None
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
@@ -116,6 +127,10 @@ def fallback_indices() -> list[MarketIndex]:
         MarketIndex(symbol, name, region, None, None, None, None, "fallback", datetime.now(), "fallback", "指数数据暂不可用")
         for symbol, name, region in FALLBACK_INDICES
     ]
+
+
+def _debug_log(source: str, status: str, count: int, message: str = "") -> None:
+    MARKET_DEBUG_LOGS.append({"source": source, "status": status, "count": count, "message": str(message)[:160]})
 
 
 def load_cn_indices() -> list[MarketIndex]:

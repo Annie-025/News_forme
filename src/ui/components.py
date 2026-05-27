@@ -42,25 +42,44 @@ def trend_card(trend: SocialTrend) -> None:
     )
 
 
-def market_index_card(index: MarketIndex) -> None:
-    if index.status == "success":
-        value = f"{index.price:,.2f}" if index.price is not None else "暂无数据"
-        change = f"{index.change_pct:+.2f}%" if index.change_pct is not None else "暂无数据"
-        updated = index.updated_at_text
+def market_index_card(index: MarketIndex | dict) -> None:
+    name = _index_field(index, "name", "symbol", default="未知指数")
+    region = _index_field(index, "region", default="")
+    source = _index_field(index, "source", default="")
+    status = _index_field(index, "status", default="empty")
+    price = _index_field(index, "value", "price", "close", default=None)
+    change_pct = _index_field(index, "change_pct", "pct_change", "percent", default=None)
+    updated = _index_field(index, "updated_at_text", "updated_at", default="暂无")
+    if status == "success":
+        value = f"{float(price):,.2f}" if price is not None else "暂不可用"
+        change = f"{float(change_pct):+.2f}%" if change_pct is not None else "暂不可用"
     else:
-        value = "暂无数据"
+        value = "暂无数据 / 暂不可用"
         change = "等待可用行情"
         updated = "暂无"
-    direction_class = "pill" if (index.change_pct or 0) >= 0 and index.status == "success" else "pill pill-blue"
+    direction_class = "pill" if (change_pct or 0) >= 0 and status == "success" else "pill pill-blue"
     st.markdown(
         f"""
         <div class="news-card index-card">
-            <div class="muted">{escape(index.region)} · {escape(index.source)}</div>
-            <h3>{escape(index.name)}</h3>
+            <div class="muted">{escape(str(region))} · {escape(str(source))}</div>
+            <h3>{escape(str(name))}</h3>
             <p style="font-size:1.35rem;font-weight:700;margin:.3rem 0;">{escape(value)}</p>
             <span class="{direction_class}">{escape(change)}</span>
-            <div class="muted" style="margin-top:.55rem;">更新：{escape(updated)}</div>
+            <div class="muted" style="margin-top:.55rem;">更新：{escape(str(updated))}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def _index_field(index: MarketIndex | dict, *names: str, default=""):
+    for name in names:
+        if isinstance(index, dict):
+            value = index.get(name)
+        else:
+            value = getattr(index, name, None)
+            if value is None and name == "updated_at_text":
+                value = getattr(index, "updated_at_text", None)
+        if value is not None:
+            return value
+    return default

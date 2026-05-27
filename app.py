@@ -379,6 +379,9 @@ elif page == "Home":
         analyzed_news = sorted(analyzed_news, key=calculate_importance_score, reverse=True)
     market_payload = get_market_payload()
     debug_market_payload("home", market_payload)
+    with st.expander("Home 市场加载状态", expanded=False):
+        st.write("[market-debug] status:", market_payload.get("status"))
+        st.write("[market-debug] indices count:", len(market_payload.get("data", {}).get("indices", [])))
     render_market_dashboard(
         market_payload["data"]["indices"],
         analyzed_news,

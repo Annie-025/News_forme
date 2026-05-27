@@ -26,10 +26,11 @@ def render_market_dashboard(
     akshare_payload: dict | None = None,
 ) -> None:
     st.markdown("#### 主要指数")
+    render_market_diagnostics(market_payload)
     if indices:
         render_data_status("市场指数", market_payload or {})
         for region, label in [("CN", "中国大陆"), ("HK", "香港市场"), ("WEST", "欧美市场")]:
-            region_indices = [index for index in indices if index.region == region]
+            region_indices = [index for index in indices if _index_field(index, "region", default="") == region]
             if not region_indices:
                 continue
             st.markdown(f"**{label}**")
@@ -175,6 +176,48 @@ def render_data_status(label: str, payload: dict) -> None:
     source = payload.get("source", "")
     badge = {"success": "实时", "fallback": "缓存", "error": "暂不可用", "idle": "待加载"}.get(status, status)
     st.caption(f"{label} · {badge} · {source}")
+
+
+def render_market_diagnostics(market_payload: dict | None) -> None:
+    with st.expander("指数加载诊断", expanded=False):
+        if market_payload is None:
+            st.warning("market_payload 未传入 render_market_dashboard")
+            return
+        indices = market_payload.get("data", {}).get("indices", [])
+        st.write("status:", market_payload.get("status"))
+        st.write("message:", market_payload.get("message"))
+        st.write("indices count:", len(indices))
+        st.write("debug:", market_payload.get("debug", []))
+        st.json([_index_to_jsonable(index) for index in indices])
+
+
+def _index_field(index: MarketIndex | dict, *names: str, default=""):
+    for name in names:
+        if isinstance(index, dict):
+            value = index.get(name)
+        else:
+            value = getattr(index, name, None)
+        if value is not None:
+            return value
+    return default
+
+
+def _index_to_jsonable(index: MarketIndex | dict) -> dict:
+    if isinstance(index, dict):
+        return index
+    return {
+        "symbol": index.symbol,
+        "name": index.name,
+        "region": index.region,
+        "price": index.price,
+        "value": index.price,
+        "change": index.change,
+        "change_pct": index.change_pct,
+        "source": index.source,
+        "status": index.status,
+        "message": index.message,
+        "updated_at": index.updated_at.isoformat() if index.updated_at else None,
+    }
 
 
 def render_empty_state(message: str) -> None:
