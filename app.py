@@ -128,6 +128,22 @@ def load_news_context(
     return grouped, documents, analyzed, news_payload
 
 
+def debug_news_payload(label: str, payload: dict, analyzed_count: int | None = None) -> None:
+    counts = {category: len(rows) for category, rows in (payload.get("data") or {}).items()}
+    print(f"[home-debug] {label} news_payload_counts={counts}")
+    if analyzed_count is not None:
+        print(f"[home-debug] {label} analyzed_count={analyzed_count}")
+
+
+def debug_market_payload(label: str, payload: dict) -> None:
+    data = payload.get("data") or {}
+    indices = data.get("indices") or []
+    print(
+        f"[home-debug] {label} market_status={payload.get('status')} "
+        f"message={payload.get('message', '')} indices_count={len(indices)}"
+    )
+
+
 def render_link_entries(title: str, rows: list[dict]) -> None:
     st.subheader(title)
     for row in rows:
@@ -354,11 +370,15 @@ if page == "Settings":
     )
 elif page == "Home":
     _, world_bank_documents, analyzed_news, news_payload = load_news_context(include_world_bank=False, **context_args)
+    debug_news_payload("home/raw", news_payload, len(analyzed_news))
     analyzed_news = filter_analyzed_news(analyzed_news, filter_request)
+    print(f"[home-debug] home/after_filter_analyzed count={len(analyzed_news)}")
     analyzed_news = filter_by_selected_tags(analyzed_news, selected_tags)
+    print(f"[home-debug] home/after_tag_filter count={len(analyzed_news)} selected_tags={selected_tags}")
     if sort_mode == "重要性优先":
         analyzed_news = sorted(analyzed_news, key=calculate_importance_score, reverse=True)
     market_payload = get_market_payload()
+    debug_market_payload("home", market_payload)
     render_market_dashboard(
         market_payload["data"]["indices"],
         analyzed_news,

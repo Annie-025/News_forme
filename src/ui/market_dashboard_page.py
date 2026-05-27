@@ -55,6 +55,7 @@ def render_market_dashboard(
         render_akshare_snapshot(akshare_snapshot)
 
     st.markdown("#### 重点新闻")
+    print(f"[ui-debug] render_news_list analyzed_news_count={len(analyzed_news)} slice=20")
     if not analyzed_news:
         render_empty_state("当前筛选条件下暂无新闻。")
     for item in analyzed_news[:20]:
