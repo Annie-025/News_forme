@@ -106,6 +106,28 @@ DEFAULT_SCOPE_TERMS = (
     "文旅消费",
     "文化产业",
     "文化產業",
+    "market",
+    "markets",
+    "stock",
+    "stocks",
+    "equity",
+    "finance",
+    "financial",
+    "economy",
+    "economic",
+    "inflation",
+    "interest rate",
+    "central bank",
+    "federal reserve",
+    "nasdaq",
+    "s&p",
+    "dow",
+    "earnings",
+    "energy",
+    "semiconductor",
+    "technology",
+    "trade",
+    "policy",
 )
 
 
@@ -147,6 +169,8 @@ def is_default_scope_article(article: NewsArticle) -> bool:
     if is_taiwan_local_article(article):
         return False
     text = f"{article_field(article, 'title')}\n{article_field(article, 'content')}\n{article_field(article, 'source')}".lower()
+    if not text.strip():
+        return True
     return any(term.lower() in text for term in DEFAULT_SCOPE_TERMS)
 
 

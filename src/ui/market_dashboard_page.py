@@ -57,7 +57,7 @@ def render_market_dashboard(
     st.markdown("#### 重点新闻")
     if not analyzed_news:
         render_empty_state("当前筛选条件下暂无新闻。")
-    for item in analyzed_news[:8]:
+    for item in analyzed_news[:20]:
         render_analyzed_news_card(item)
 
     if show_social_signals and trends:

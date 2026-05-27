@@ -10,7 +10,7 @@ try:
 except ImportError:
     feedparser = None
 
-from src.models import NewsArticle
+from src.models import NewsArticle, article_field
 from data_sources.sample_provider import load_sample_news as load_sample_news_rows
 from src.utils.text import clean_html, normalize_text
 from src.utils.time import friendly_date
@@ -23,9 +23,7 @@ class NewsFetcher:
     def fetch_category(self, category: str, sources: Iterable[dict], limit: int) -> list[NewsArticle]:
         articles: list[NewsArticle] = []
         for source in sources:
-            if len(articles) >= limit:
-                break
-            articles.extend(self._fetch_rss(source, category, limit - len(articles)))
+            articles.extend(self._fetch_rss(source, category, limit))
         return self._deduplicate(articles)[:limit]
 
     def fetch_newsapi(self, api_key: str, category: str, query: str, limit: int) -> list[NewsArticle]:
@@ -118,10 +116,16 @@ class NewsFetcher:
         ]
 
     def _deduplicate(self, articles: list[NewsArticle]) -> list[NewsArticle]:
+        return self.deduplicate_articles(articles)
+
+    def deduplicate_articles(self, articles: list[NewsArticle | dict]) -> list[NewsArticle | dict]:
         seen: set[str] = set()
-        result: list[NewsArticle] = []
+        result: list[NewsArticle | dict] = []
         for article in articles:
-            if article.title and article.title not in seen:
-                seen.add(article.title)
+            title = article_field(article, "title")
+            link = article_field(article, "link") or article_field(article, "url")
+            key = (link or title).strip()
+            if key and key not in seen:
+                seen.add(key)
                 result.append(article)
         return result

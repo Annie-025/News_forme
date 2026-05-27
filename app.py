@@ -33,6 +33,9 @@ from src.world_bank_client import WorldBankDocumentsClient
 from src.world_bank_indicators import WorldBankIndicatorsClient
 
 
+HOME_NEWS_LIMIT = 20
+
+
 load_local_env(ROOT)
 st.set_page_config(
     page_title="News For Me",
@@ -312,7 +315,7 @@ sort_mode = st.selectbox("排序方式", ["重要性优先", "最新优先"], in
 category_filter = "全部"
 sentiment_filter = "全部"
 time_filter = "近 3 天"
-limit = min(DEFAULT_NEWS_LIMIT, 10)
+limit = max(DEFAULT_NEWS_LIMIT, HOME_NEWS_LIMIT)
 load_market_data = st.session_state.get("load_market_data", False)
 newsapi_key = env_value("NEWSAPI_KEY") or env_value("NEWS_API_KEY")
 serpapi_key = env_value("SERPAPI_API_KEY")
@@ -355,7 +358,7 @@ elif page == "Home":
     analyzed_news = filter_by_selected_tags(analyzed_news, selected_tags)
     if sort_mode == "重要性优先":
         analyzed_news = sorted(analyzed_news, key=calculate_importance_score, reverse=True)
-    market_payload = get_market_payload() if load_market_data else {"status": "idle", "source": "manual", "message": "市场数据待加载。", "data": {"indices": [], "snapshot": None}}
+    market_payload = get_market_payload()
     render_market_dashboard(
         market_payload["data"]["indices"],
         analyzed_news,
@@ -388,7 +391,7 @@ elif page == "Market Dashboard":
         if st.session_state.get("show_social_signals", True)
         else []
     )
-    market_payload = get_market_payload() if load_market_data else {"status": "idle", "source": "manual", "message": "市场数据待加载。", "data": {"indices": [], "snapshot": None}}
+    market_payload = get_market_payload()
     market_indices = market_payload["data"]["indices"]
     akshare_snapshot = market_payload["data"]["snapshot"]
     render_market_dashboard(
@@ -413,7 +416,7 @@ elif page == "Index Detail":
     _, _, analyzed_news, _ = load_news_context(include_world_bank=False, **context_args)
     analyzed_news = filter_analyzed_news(analyzed_news, filter_request)
     analyzed_news = filter_by_selected_tags(analyzed_news, selected_tags)
-    market_indices = get_market_payload()["data"]["indices"] if load_market_data else []
+    market_indices = get_market_payload()["data"]["indices"]
     render_index_detail(market_indices, filter_analyzed_news(analyzed_news, filter_request))
 elif page == "Reports":
     render_reports_page()

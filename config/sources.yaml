@@ -1,9 +1,21 @@
 finance:
   - name: Google News - A股
     url: "https://news.google.com/rss/search?q=A%E8%82%A1%20%E8%B4%A2%E7%BB%8F&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+  - name: Google News - 全球市场
+    url: "https://news.google.com/rss/search?q=global%20markets%20stocks%20economy&hl=en-US&gl=US&ceid=US:en"
+  - name: Google News - 美股科技
+    url: "https://news.google.com/rss/search?q=NASDAQ%20S%26P%20500%20technology%20earnings&hl=en-US&gl=US&ceid=US:en"
 politics:
   - name: Google News - 中国政策
     url: "https://news.google.com/rss/search?q=%E4%B8%AD%E5%9B%BD%20%E6%94%BF%E7%AD%96%20%E5%AE%8F%E8%A7%82&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+  - name: Google News - 美国经济政策
+    url: "https://news.google.com/rss/search?q=US%20economic%20policy%20Federal%20Reserve%20trade&hl=en-US&gl=US&ceid=US:en"
+  - name: Google News - 欧洲经济政策
+    url: "https://news.google.com/rss/search?q=Europe%20economy%20ECB%20policy%20trade&hl=en-US&gl=US&ceid=US:en"
 culture:
   - name: Google News - 文化产业
     url: "https://news.google.com/rss/search?q=%E6%96%87%E5%8C%96%E4%BA%A7%E4%B8%9A%20%E7%94%B5%E5%BD%B1%20%E9%9F%B3%E4%B9%90&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+  - name: Google News - 消费文旅
+    url: "https://news.google.com/rss/search?q=%E6%96%87%E6%97%85%20%E6%B6%88%E8%B4%B9%20%E9%9B%B6%E5%94%AE&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+  - name: Google News - 全球消费
+    url: "https://news.google.com/rss/search?q=consumer%20retail%20travel%20economy&hl=en-US&gl=US&ceid=US:en"

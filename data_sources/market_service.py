@@ -35,6 +35,14 @@ GLOBAL_INDEX_TARGETS = [
 AK_PROVIDER_TIMEOUT_SECONDS = 4
 TUSHARE_PROVIDER_TIMEOUT_SECONDS = 4
 
+FALLBACK_INDICES = [
+    ("^GSPC", "S&P 500", "WEST"),
+    ("^IXIC", "NASDAQ", "WEST"),
+    ("^DJI", "Dow Jones", "WEST"),
+    ("000300", "沪深300", "CN"),
+    ("^HSI", "恒生指数", "HK"),
+]
+
 
 def get_market_response(data_dir: Path, ttl_seconds: int = 300) -> dict:
     cache_path = data_dir / "cache" / "market_cache.json"
@@ -56,10 +64,12 @@ def get_market_response(data_dir: Path, ttl_seconds: int = 300) -> dict:
         "indices": [_index_from_dict(row) for row in data.get("indices", [])],
         "snapshot": snapshot_from_dict(data.get("snapshot", {})) if data.get("snapshot") else None,
     }
-    if not payload["data"]["indices"] and payload["data"]["snapshot"] is None:
-        payload["source"] = "empty"
-        payload["status"] = "error"
-        payload["message"] = "市场实时数据暂不可用，暂无本地缓存。"
+    if not payload["data"]["indices"]:
+        payload["data"]["indices"] = fallback_indices()
+        payload["source"] = "empty" if payload.get("source") == "empty" else payload.get("source", "empty")
+        payload["status"] = "fallback"
+        payload["message"] = "指数数据暂不可用，已展示 fallback 指数卡片。"
+    print(f"[market-debug] response status={payload.get('status')} source={payload.get('source')} count={len(payload['data']['indices'])}")
     return payload
 
 
@@ -67,13 +77,15 @@ def _load_akshare_market() -> tuple[dict, str] | None:
     indices = fetch_market_indices()
     snapshot = fetch_akshare_snapshot(limit=8)
     has_snapshot = any([snapshot.a_spot_top, snapshot.index_spot, snapshot.concept_boards, snapshot.fund_flow])
+    print(f"[market-debug] source=akshare status=loaded count={len(indices)} snapshot={int(has_snapshot)}")
     if any(index.status == "success" for index in indices) or has_snapshot:
         return {"indices": [_index_to_dict(index) for index in indices], "snapshot": snapshot_to_dict(snapshot)}, "akshare"
     return None
 
 
 def _load_tushare_market() -> tuple[dict, str] | None:
-    tushare_indices, _ = fetch_tushare_indices()
+    tushare_indices, status = fetch_tushare_indices()
+    print(f"[market-debug] source=tushare status={status.get('status')} count={len(tushare_indices)} error={status.get('message', '')}")
     if tushare_indices:
         return {"indices": [_index_to_dict(index) for index in tushare_indices], "snapshot": None}, "tushare"
     return None
@@ -86,8 +98,10 @@ def _call_with_timeout(func, timeout_seconds: int) -> tuple[dict, str] | None:
         return future.result(timeout=timeout_seconds)
     except TimeoutError:
         future.cancel()
+        print(f"[market-debug] source={getattr(func, '__name__', 'provider')} status=timeout count=0 error=timeout")
         return None
-    except Exception:
+    except Exception as exc:
+        print(f"[market-debug] source={getattr(func, '__name__', 'provider')} status=error count=0 error={type(exc).__name__}")
         return None
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
@@ -95,6 +109,13 @@ def _call_with_timeout(func, timeout_seconds: int) -> tuple[dict, str] | None:
 
 def fetch_market_indices() -> list[MarketIndex]:
     return load_cn_indices() + _load_global_indices()
+
+
+def fallback_indices() -> list[MarketIndex]:
+    return [
+        MarketIndex(symbol, name, region, None, None, None, None, "fallback", datetime.now(), "fallback", "指数数据暂不可用")
+        for symbol, name, region in FALLBACK_INDICES
+    ]
 
 
 def load_cn_indices() -> list[MarketIndex]:

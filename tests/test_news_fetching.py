@@ -137,4 +137,4 @@ def test_get_news_falls_back_to_serpapi_when_newsapi_empty(monkeypatch, tmp_path
     assert grouped["finance"][0]["source"] == "SerpAPI"
     assert "newsapi:finance" in calls
     assert "serpapi:finance" in calls
-    assert "rss:finance" not in calls
+    assert "rss:finance" in calls

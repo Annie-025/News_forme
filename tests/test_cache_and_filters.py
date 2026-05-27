@@ -140,7 +140,7 @@ def test_market_response_returns_empty_when_provider_and_cache_fail(tmp_path, mo
 
     payload = market_service.get_market_response(tmp_path, ttl_seconds=0)
 
-    assert payload["status"] == "error"
+    assert payload["status"] == "fallback"
     assert payload["source"] == "empty"
-    assert payload["data"]["indices"] == []
+    assert len(payload["data"]["indices"]) >= 5
     assert payload["data"]["snapshot"] is None
