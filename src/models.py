@@ -133,6 +133,22 @@ class NewsArticle:
         )
 
 
+def article_field(article: NewsArticle | dict[str, Any], field: str, default: Any = "") -> Any:
+    if isinstance(article, dict):
+        value = article.get(field, default)
+    else:
+        value = getattr(article, field, default)
+    if value is None:
+        return default
+    return value
+
+
+def article_to_dict(article: NewsArticle | dict[str, Any]) -> dict[str, Any]:
+    if isinstance(article, dict):
+        return article
+    return article.to_dict()
+
+
 @dataclass(frozen=True)
 class SocialTrend:
     platform: str

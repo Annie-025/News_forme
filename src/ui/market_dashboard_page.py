@@ -9,7 +9,7 @@ import streamlit as st
 from data_sources.analysis_service import analyze_response
 from src.analysis.news_analyzer import AnalyzedNews, market_sentiment
 from data_sources.market_service import valid_sentiment_changes
-from src.models import AkShareSnapshot, MarketIndex, NewsArticle, SocialTrend
+from src.models import AkShareSnapshot, MarketIndex, NewsArticle, SocialTrend, article_field
 from src.ui.components import market_index_card, news_card, pills, trend_card
 from src.world_bank_indicators import WorldBankIndicator, dashboard_eligible_indicators
 
@@ -107,18 +107,21 @@ def render_compact_rows(title: str, rows: list[dict], columns: list[str]) -> Non
 
 def render_analyzed_news_card(item: AnalyzedNews) -> None:
     article = item.article
+    title = article_field(article, "title")
+    source = article_field(article, "source")
+    date = article_field(article, "date")
     st.markdown(
         f"""
         <div class="news-card news-flow-card">
-            <div class="muted">{escape(article.source)} · {escape(article.date)}</div>
-            <h3>{escape(article.title)}</h3>
-            <p><b>摘要：</b>{escape(item.ai_analysis.get("事实摘要", article.title))}</p>
+            <div class="muted">{escape(source)} · {escape(date)}</div>
+            <h3>{escape(title)}</h3>
+            <p><b>摘要：</b>{escape(item.ai_analysis.get("事实摘要", title))}</p>
             <p>{pills(item.display_tags, blue=True)}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    key = f"ai_{abs(hash(article.title + article.source))}"
+    key = f"ai_{abs(hash(title + source))}"
     if st.button("AI 解读", key=key, help="展开这条新闻的规则分析"):
         st.session_state[key + "_open"] = not st.session_state.get(key + "_open", False)
     if st.session_state.get(key + "_open", False):

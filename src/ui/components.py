@@ -4,7 +4,7 @@ from html import escape
 
 import streamlit as st
 
-from src.models import MarketIndex, NewsArticle, SocialTrend
+from src.models import MarketIndex, NewsArticle, SocialTrend, article_field
 
 
 def pills(items: list[str], blue: bool = False) -> str:
@@ -13,13 +13,14 @@ def pills(items: list[str], blue: bool = False) -> str:
 
 
 def news_card(article: NewsArticle, summary: str = "") -> None:
-    link = f'<a href="{escape(article.link)}" target="_blank">原文链接</a>' if article.link else ""
+    article_link = article_field(article, "link") or article_field(article, "url")
+    link = f'<a href="{escape(article_link)}" target="_blank">原文链接</a>' if article_link else ""
     st.markdown(
         f"""
         <div class="news-card">
-            <div class="muted">{escape(article.source)} · {escape(article.date)}</div>
-            <h3>{escape(article.title)}</h3>
-            <p>{escape(summary or article.content)}</p>
+            <div class="muted">{escape(article_field(article, "source"))} · {escape(article_field(article, "date"))}</div>
+            <h3>{escape(article_field(article, "title"))}</h3>
+            <p>{escape(summary or article_field(article, "content"))}</p>
             {link}
         </div>
         """,

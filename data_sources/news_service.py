@@ -6,7 +6,7 @@ from data_sources.cache_store import is_fresh, read_cache, response, write_cache
 from data_sources.sample_provider import load_sample_news
 from src.news_fetcher import NewsFetcher
 from src.news_filters import filter_default_scope
-from src.models import NewsArticle
+from src.models import NewsArticle, article_to_dict
 
 
 NEWS_QUERIES = {
@@ -61,7 +61,7 @@ def refresh_news_response(
         if not articles:
             articles = filter_default_scope(fetcher.fetch_category(category, sources.get(category, []), limit))
         grouped[category] = articles
-    data = {category: [article.to_dict() for article in articles] for category, articles in grouped.items()}
+    data = {category: [article_to_dict(article) for article in articles] for category, articles in grouped.items()}
     return write_cache(data_dir / "cache" / "news_cache.json", data, "cache")
 
 

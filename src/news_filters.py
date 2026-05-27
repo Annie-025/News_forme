@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from src.analysis.news_analyzer import AnalyzedNews
-from src.models import NewsArticle
+from src.models import NewsArticle, article_field
 from src.utils.time import parse_friendly_date
 
 
@@ -139,14 +139,14 @@ def has_taiwan_intent(keyword: str) -> bool:
 
 
 def is_taiwan_local_article(article: NewsArticle) -> bool:
-    text = f"{article.title}\n{article.content}\n{article.source}".lower()
+    text = f"{article_field(article, 'title')}\n{article_field(article, 'content')}\n{article_field(article, 'source')}".lower()
     return any(term.lower() in text for term in TAIWAN_LOCAL_TERMS)
 
 
 def is_default_scope_article(article: NewsArticle) -> bool:
     if is_taiwan_local_article(article):
         return False
-    text = f"{article.title}\n{article.content}\n{article.source}".lower()
+    text = f"{article_field(article, 'title')}\n{article_field(article, 'content')}\n{article_field(article, 'source')}".lower()
     return any(term.lower() in text for term in DEFAULT_SCOPE_TERMS)
 
 
@@ -157,7 +157,7 @@ def _article_matches(article: NewsArticle, keyword: str, allow_taiwan: bool) -> 
         return True
     if has_taiwan_intent(keyword) and is_taiwan_local_article(article):
         return True
-    return keyword in article.title or keyword in article.content
+    return keyword in article_field(article, "title") or keyword in article_field(article, "content")
 
 
 def _matches_category(item: AnalyzedNews, category: str) -> bool:
@@ -191,9 +191,10 @@ def _matches_sentiment(item: AnalyzedNews, sentiment: str) -> bool:
 
 
 def _matches_time(item: AnalyzedNews, time_range: str) -> bool:
-    if time_range == "全部" or not item.article.date:
+    article_date = article_field(item.article, "date")
+    if time_range == "全部" or not article_date:
         return True
-    parsed = parse_friendly_date(item.article.date)
+    parsed = parse_friendly_date(article_date)
     if parsed is None:
         return False
     days = {"今日": 0, "近 3 天": 3, "近 7 天": 7}.get(time_range)
@@ -208,10 +209,10 @@ def _matches_time(item: AnalyzedNews, time_range: str) -> bool:
 def _search_text(item: AnalyzedNews) -> str:
     article = item.article
     parts = [
-        article.title,
-        article.content,
-        article.source,
-        article.category,
+        article_field(article, "title"),
+        article_field(article, "content"),
+        article_field(article, "source"),
+        article_field(article, "category"),
         item.content_category,
         item.impact_direction,
         " ".join(item.display_tags),

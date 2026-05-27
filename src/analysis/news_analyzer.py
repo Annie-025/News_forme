@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.analysis.summarizer import summarize
-from src.models import NewsArticle
+from src.models import NewsArticle, article_field
 
 
 @dataclass(frozen=True)
@@ -34,19 +34,22 @@ def preview_news_items(articles: list[NewsArticle]) -> list[AnalyzedNews]:
 
 
 def preview_news_item(article: NewsArticle) -> AnalyzedNews:
-    direction = {"利好": "偏利好", "利空": "偏谨慎", "中性": "不确定"}.get(article.sentiment, article.sentiment or "不确定")
-    score = 38 if article.impact == "高影响" else 18
-    tags = article.tags or [_default_category(article.category), direction, _time_badge(article)]
+    sentiment = article_field(article, "sentiment", "中性")
+    impact = article_field(article, "impact", "中性")
+    category = article_field(article, "category", "finance")
+    direction = {"利好": "偏利好", "利空": "偏谨慎", "中性": "不确定"}.get(sentiment, sentiment or "不确定")
+    tags = article_field(article, "tags", []) or [_default_category(category), direction, _time_badge(article)]
+    score = 38 if impact == "高影响" else 18
     targets = [tag for tag in tags if tag in ["A股", "美股", "科技", "政策", "宏观", "产业", "国际"]] or ["整体市场"]
     return AnalyzedNews(
         article=article,
-        content_category=_default_category(article.category),
+        content_category=_default_category(category),
         display_tags=tags,
         impact_targets=targets,
         impact_direction=direction,
         impact_score=score,
         ai_analysis={
-            "事实摘要": article.summary or article.content or article.title,
+            "事实摘要": article_field(article, "summary") or article_field(article, "content") or article_field(article, "title"),
             "经济学机制": "",
             "可能影响": "",
             "不确定性": "",
@@ -55,9 +58,12 @@ def preview_news_item(article: NewsArticle) -> AnalyzedNews:
 
 
 def analyze_news_item(article: NewsArticle) -> AnalyzedNews:
-    text = f"{article.title}\n{article.content}".lower()
+    title = article_field(article, "title")
+    content = article_field(article, "content")
+    category_value = article_field(article, "category", "finance")
+    text = f"{title}\n{content}".lower()
     score = 8
-    category = _default_category(article.category)
+    category = _default_category(category_value)
     targets: set[str] = set()
     directions: list[str] = []
     for keywords, weight, rule_category, rule_targets, direction in KEYWORD_RULES:
@@ -66,7 +72,7 @@ def analyze_news_item(article: NewsArticle) -> AnalyzedNews:
             category = rule_category
             targets.update(rule_targets)
             directions.append(direction)
-    if article.date:
+    if article_field(article, "date"):
         score += 5
     direction = _direction(directions)
     targets_list = sorted(targets) or ["整体市场"]
@@ -78,7 +84,7 @@ def analyze_news_item(article: NewsArticle) -> AnalyzedNews:
         impact_direction=direction,
         impact_score=min(score, 100),
         ai_analysis={
-            "事实摘要": summarize(article.content, 1) or article.title,
+            "事实摘要": summarize(content, 1) or title,
             "经济学机制": f"该信息可能通过政策预期、资金流和风险偏好影响{'、'.join(targets_list)}。",
             "可能影响": f"方向为{direction}，这是规则推断，不构成投资建议。",
             "不确定性": "需继续观察官方数据、成交量和后续政策细节。",
@@ -110,4 +116,4 @@ def _direction(votes: list[str]) -> str:
 
 
 def _time_badge(article: NewsArticle) -> str:
-    return "年度" if article.category == "world_bank" else "近期"
+    return "年度" if article_field(article, "category") == "world_bank" else "近期"
