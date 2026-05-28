@@ -83,6 +83,30 @@ def test_load_cn_indices_keeps_other_indices_when_one_missing(monkeypatch):
     assert next(index for index in indices if index.name == "深证成指").status == "empty"
 
 
+def test_fetch_market_indices_keeps_cn_indices_when_global_provider_fails(monkeypatch):
+    import data_sources.market_service as market_data
+    from src.models import MarketIndex
+
+    cn_index = MarketIndex(
+        symbol="000001",
+        name="上证指数",
+        region="CN",
+        price=3100.5,
+        change=12.3,
+        change_pct=0.4,
+        turnover=1000,
+        source="AKShare / 东方财富",
+        updated_at=None,
+        status="success",
+    )
+    monkeypatch.setattr(market_data, "load_cn_indices", lambda: [cn_index])
+    monkeypatch.setattr(market_data, "_load_global_indices", lambda: (_ for _ in ()).throw(RuntimeError("global timeout")))
+
+    indices = market_data.fetch_market_indices()
+
+    assert indices == [cn_index]
+
+
 def test_source_status_sanitizes_sensitive_values():
     status = SourceStatus(
         name="AKShare",

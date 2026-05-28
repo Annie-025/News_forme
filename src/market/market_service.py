@@ -9,7 +9,7 @@ import pandas as pd
 from src.market.market_cache import load_or_refresh_json
 from src.market.market_providers import AK_SOURCE, fetch_akshare_snapshot, fetch_cn_index_spot, snapshot_from_dict, snapshot_to_dict
 from data_sources.tushare_provider import fetch_tushare_indices
-from src.models import MarketIndex
+from src.models import AkShareSnapshot, MarketIndex
 
 
 MARKET_DEBUG_LOGS: list[dict] = []
@@ -34,8 +34,11 @@ GLOBAL_INDEX_TARGETS = [
     ("^FCHI", "法国CAC40", "WEST"),
 ]
 
-AK_PROVIDER_TIMEOUT_SECONDS = 4
+AK_PROVIDER_TIMEOUT_SECONDS = 24
+CN_INDEX_TIMEOUT_SECONDS = 18
+AK_SNAPSHOT_TIMEOUT_SECONDS = 3
 TUSHARE_PROVIDER_TIMEOUT_SECONDS = 4
+GLOBAL_INDEX_TIMEOUT_SECONDS = 2
 
 FALLBACK_INDICES = [
     ("^GSPC", "S&P 500", "WEST"),
@@ -80,7 +83,7 @@ def get_market_response(data_dir: Path, ttl_seconds: int = 300) -> dict:
 
 def _load_akshare_market() -> tuple[dict, str] | None:
     indices = fetch_market_indices()
-    snapshot = fetch_akshare_snapshot(limit=8)
+    snapshot = _call_with_timeout(_load_akshare_snapshot, AK_SNAPSHOT_TIMEOUT_SECONDS) or _empty_snapshot()
     has_snapshot = any([snapshot.a_spot_top, snapshot.index_spot, snapshot.concept_boards, snapshot.fund_flow])
     print(f"[market-debug] source=akshare status=loaded count={len(indices)} snapshot={int(has_snapshot)}")
     if any(index.status == "success" for index in indices) or has_snapshot:
@@ -98,6 +101,10 @@ def _load_tushare_market() -> tuple[dict, str] | None:
         return {"indices": [_index_to_dict(index) for index in tushare_indices], "snapshot": None}, "tushare"
     _debug_log("tushare", status.get("status", "empty"), len(tushare_indices), status.get("message", ""))
     return None
+
+
+def _load_akshare_snapshot() -> AkShareSnapshot:
+    return fetch_akshare_snapshot(limit=8)
 
 
 def _call_with_timeout(func, timeout_seconds: int) -> tuple[dict, str] | None:
@@ -119,7 +126,9 @@ def _call_with_timeout(func, timeout_seconds: int) -> tuple[dict, str] | None:
 
 
 def fetch_market_indices() -> list[MarketIndex]:
-    return load_cn_indices() + _load_global_indices()
+    cn_indices = _call_with_timeout(load_cn_indices, CN_INDEX_TIMEOUT_SECONDS) or []
+    global_indices = _call_with_timeout(_load_global_indices, GLOBAL_INDEX_TIMEOUT_SECONDS) or []
+    return cn_indices + global_indices
 
 
 def fallback_indices() -> list[MarketIndex]:
@@ -127,6 +136,10 @@ def fallback_indices() -> list[MarketIndex]:
         MarketIndex(symbol, name, region, None, None, None, None, "fallback", datetime.now(), "fallback", "指数数据暂不可用")
         for symbol, name, region in FALLBACK_INDICES
     ]
+
+
+def _empty_snapshot() -> AkShareSnapshot:
+    return AkShareSnapshot(datetime.now(), [], [], [], [], [], [], [], [])
 
 
 def _debug_log(source: str, status: str, count: int, message: str = "") -> None:
